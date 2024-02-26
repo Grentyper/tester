@@ -8,6 +8,7 @@ using System.Threading;
 using System.IO;
 using System.Data;
 using MySql.Data.MySqlClient;
+using System.Windows.Markup;
 
 namespace TextApp
 {
@@ -15,87 +16,23 @@ namespace TextApp
     {
         static void Main(string[] args)
         {
-            new Program().GetConfig();
+            new Program().GetData();
             Console.ReadKey();
-            //Thread taska = new Thread(JobA);
-            //Thread taskb = new Thread(() => JobB("ShowTime"));
-            //taska.Start();
-            //taskb.Start();
-
         }
-
+        DataTable Table = new DataTable();
+        DataRow[] RowsRaw = new DataRow[] { };
         string SQLConnectString = "server=escodb.cou5lzgkdcjg.ap-northeast-1.rds.amazonaws.com;user=root;database=auodb2;port=3306;password=LqaZ2wsX;Charset=utf8;Connection Timeout=10000;";
         Dictionary<string, double> TodaySun = new Dictionary<string, double>();
 
-        private string GetTodaySUN( )
+        private void GetRawData( )
         {
-            string Result = "";
-
+             
+                DateTime RealT= DateTime.Now;
+                int mins= 1;
+                string dpids="80439,80476,80477";
+                string dsids="888,891";
+                Table = ScanSQL(RealT, mins,dpids,dsids);
            
-                DataTable Table = new DataTable();
-                DataRow[] RowsRaw = new DataRow[] { };
-                double SumSun = 0.0;
-                double Value = 0.0;
-                string dataTime = "";
-                int mins = 1;
-                double Coef = 1 * (60 / mins);
-                DateTime RealT = DateTime.Now;
-                Table = ScanSQL(RealT, mins, VM.DBdpids, VM.DBdsid);
-
-                for (int i = 0; i < 5 * mins; i++)
-                {
-                    dataTime = RealT.AddMinutes(-(i + 1)).ToString("yyyy-MM-dd HH:mm:00");
-                    SumSun = 0.0;
-                    if (TodaySun.Count > 0)
-                    {
-                        if (TodaySun.ContainsKey(dataTime)) { SumSun = TodaySun[dataTime]; break; }
-                        else
-                        {
-                            if (i > mins) { SumSun = -1.0; break; }
-                        }
-                    }
-                    else
-                    {
-                        SumSun = 0.0;
-                        break;
-                    }
-
-                }
-
-                for (int i = 0; i < 5 * mins; i++)
-                {
-                    dataTime = RealT.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:00");
-                    Value = 0.0;
-                    try { RowsRaw = Table.Select("time ='" + dataTime + "'"); }
-                    catch { RowsRaw = new DataRow[] { }; }
-                    if (RowsRaw.Length > 0)
-                    {
-                        try
-                        {
-                            Value = double.Parse(RowsRaw[RowsRaw.Length - 1]["value"].ToString());
-                        }
-                        catch (Exception ex)
-                        {
-                            Value = 0.0;
-                            Console.WriteLine($"GetSUN() > Value, {ex.Message} at time : {dataTime}");
-                        }
-                        break;
-                    }
-                    else
-                    {
-                        if (i > mins) { Value = -1.0; break; }
-                    }
-
-                }
-
-                if (Value >= 0.0 && SumSun >= 0.0)
-                {
-                    SumSun = Math.Round(SumSun + Value / Coef, 3);
-                }
-                Result = $"{dataTime}={SumSun.ToString()}";
-                TodaySun.Add(dataTime, SumSun);
-           
-            return Result;
         }
 
         private DataTable ScanSQL(DateTime RealTime, int mins, string Dpids, string SourceID)
@@ -107,7 +44,7 @@ namespace TextApp
             MySqlConnection SQLConnetion = new MySqlConnection(SQLConnectString);
             string startTime = RealTime.ToString("yyyy-MM-dd HH:mm:00");
             string endTime = RealTime.AddMinutes(-5 * mins).ToString("yyyy-MM-dd HH:mm:00");
-            SqlCom = "SELECT DATE_FORMAT(record_time,'%Y-%m-%d %H:%i:%00') as time , data_value as value, dpid FROM sys_data_raw where dsid = " + SourceID + " AND dpid in (" + Dpids + ") and record_time >= '" + startTime + "' and record_time <= '" + endTime + "' AND data_value >= 0  Order by time ASC;";
+            SqlCom = "SELECT DATE_FORMAT(record_time,'%Y-%m-%d %H:%i:%00') as time , data_value as value, dpid FROM sys_data_raw where dsid in ( " + SourceID + " ) AND dpid in (" + Dpids + ") and record_time >= '" + startTime + "' and record_time <= '" + endTime + "' AND data_value >= 0  Order by time ASC;";
             try
             {
                 SQLConnetion.Open();
@@ -127,39 +64,39 @@ namespace TextApp
             return Table;
         }
 
-        static void JobA()
-        {
-            
-            for (int i = 0; i < 60; i++)
-            {
-                Console.WriteLine($"{Thread.CurrentThread.ManagedThreadId} NowTime : ");
-                if (i == 60 - 1) { i = 0; }
-                Thread.Sleep(1000);
-
-            }
-           
-        }
-
-        static void JobB(object para)
-        {
-            for (int i = 0; i < 30; i++)
-            {
-                Console.WriteLine($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")} > {Thread.CurrentThread.ManagedThreadId}");
-                if (i == 60 - 1) { i = 0; }
-                Thread.Sleep(2000);
-
-            }
-
-        }
-
+        
         public void GetData()
         {
-            Thread taska = new Thread(JobA);
-            taska.Start();
-            for (int i = 0; i < 5; i++)
+            
+            GetRawData( );
+            DateTime RealTime= DateTime.Now;
+            string Sumdpids= "10000";
+            string Sumvalues="";
+            try { RowsRaw = Table.Select("time ='" + RealTime.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '"+Sumdpids+"'" ); }
+            catch { RowsRaw = new DataRow[] { }; }
+            if (RowsRaw.Length > 0)
             {
-                Thread.Sleep(2000);
+                Sumvalues= RowsRaw[RowsRaw.Length-1]["value"].ToString();   
+               Console.WriteLine($"Sumvalues > {Sumvalues}, RealTime.AddMinutes(-1) >{RealTime.AddMinutes(-1)}");
             }
+            else
+            {
+
+                 Console.WriteLine($"umvalues > null ");
+            }
+            string Sundpids= "80476";
+            string sun="";
+            try { RowsRaw = Table.Select("time ='" + RealTime.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '"+Sundpids+"'" ); }
+            catch { RowsRaw = new DataRow[] { }; }
+            if (RowsRaw.Length > 0)
+                {
+                sun= RowsRaw[RowsRaw.Length-1]["value"].ToString();   
+                Console.WriteLine($"Sun > {sun}, RealTime >{RealTime}");
+                }
+                else
+                {
+                  Console.WriteLine($"Sun > null ");
+                }
 
         }
          public void GetConfig()
@@ -188,32 +125,7 @@ namespace TextApp
                 TXT += $"{ConfigJString[i].Split(',')[0]},{ConfigJString[i].Split(',')[1]},{Math.Round(sum,3)},{Math.Round(sumSun,3)}\n";
             }
             Console.WriteLine(TXT);
-            //JConfig.SourceID = "DEKRA_test";
-            //JConfig.Headline = 9;
-            //JConfig.Logdatapath = @"D:\DATA LOG\";
-            //JConfig.Realdatapath = @"C:\Program Files (x86)\MELSOFT\SGT2000\Multi\00001\Drive\A\Package1\LOG00001\";
-            //JConfig.Dataline = 13;
-            //JConfig.DataFiles = new List<string> { "LOG_AIO.CSV", "LOG_PM.CSV" };
-            //JConfig.Dpids = dpid;
-            //string dpidString = JsonConvert.SerializeObject(JConfig, Formatting.Indented);
-
-            //dpid.Add("dataPoint","211");
-            //dpid.Add("Coef","1");
-            //dpid.Add("Adress", "0x101C");
-            //dpid.Add("Num", "1");
-            //dpid.Add("Unit", "˚C");
-            //dpid.Add("Type", "S16");
-            //DataMap map = new DataMap("1", dpid);
-            //List<DataMap> maplist = new List<DataMap>();
-            //maplist.Add(map);
-            //ModbusConfig config1 = new ModbusConfig("COM1", "9600", "TM", maplist);
-            //ModbusConfig config2 = new ModbusConfig("COM1", "9600", "INV", maplist);
-            //List<ModbusConfig> configlist = new List<ModbusConfig>();
-            //configlist.Add(config1);
-            //configlist.Add(config2);
-            //Config ModbusConofig = new Config("DFI_SOLAR", configlist);
-
-            //string dpidString = JsonConvert.SerializeObject(ModbusConofig, Formatting.Indented);
+            
         }
     }
 
