@@ -32,15 +32,15 @@ namespace TextApp
             mins= 1;
             dpids= "80476,80552,80594,80636,80678,80720,80762,83983,83984,83985,83986,83987,83988,83989,84658,84659,84664,84665";
             dsids="891,42,43";
-            Table = ScanSQL(RealT, mins,dpids,dsids);
+            //Table = ScanSQL(RealT, mins,dpids,dsids);
             //for (int i = 0; i < Table.Rows.Count; i++)
             //{
             //    Console.WriteLine(DateTime.Now + $" :  {Table.Rows[i]["time"]}={Table.Rows[i]["dpid"]}={Table.Rows[i]["value"]} ");
             //}
-            try { GetRealTime(); }
-            catch (Exception ex) { Console.WriteLine(DateTime.Now + $" :  GetSun() filure+{ ex.ToString()} "); }
-            try { GetSun(); }
-            catch (Exception ex) { Console.WriteLine(DateTime.Now + $" :  GetSun() filure+{ ex.ToString()} "); }
+            //try { GetRealTime(); }
+            //catch (Exception ex) { Console.WriteLine(DateTime.Now + $" :  GetSun() filure+{ ex.ToString()} "); }
+            //try { GetSun(); }
+            //catch (Exception ex) { Console.WriteLine(DateTime.Now + $" :  GetSun() filure+{ ex.ToString()} "); }
 
 
             Timer _timer = new Timer(TimerCallback, null, 0, 1 * 60 * 1000);//執行每1分鐘執行一次程式
@@ -54,7 +54,7 @@ namespace TextApp
         {
             RealT = DateTime.Now;
             Table = ScanSQL(RealT, mins, dpids, dsids);
-            
+            Console.WriteLine($"getTerarT{RealT}" + "\n");
             try { GetRealTime(); }
             catch (Exception ex) { Console.WriteLine(DateTime.Now + $" :  GetSun() filure+{ ex.ToString()} "); }
             try { GetSun(); }
@@ -74,7 +74,7 @@ namespace TextApp
         }
         public void GetRealTime()
         {
-            
+           
             Dictionary<string, string> values = new Dictionary<string, string>();
             values = GetRealTimeData("84658", "84664","42,43", RealT);
             InsertData("84664", "112", "43", "GLOBALWAFERS_HC_AC", values);
@@ -89,37 +89,33 @@ namespace TextApp
         {
             string vmdata = "";
             Dictionary<string, string> DpidValue = new Dictionary<string, string>();
-            //Console.WriteLine($"Table.Select( dpid =  + {vmdpid }+ );");
+            
             try { RowsRaw = Table.Select(" dpid = '" + vmdpid + "'"); }
             catch { RowsRaw = new DataRow[] { }; }
-            for (int i = 0; i < RowsRaw.Length; i++)
-            {
-                Console.WriteLine($" :  {RowsRaw[i]["time"]}={RowsRaw[i]["dpid"]}={RowsRaw[i]["value"]} ");
-            }
+            //for (int i = 0; i < RowsRaw.Length; i++)
+            //{
+            //    Console.WriteLine($" VMDATA Realtime from TABLE :  {RowsRaw[i]["time"]}={RowsRaw[i]["dpid"]}={RowsRaw[i]["value"]} ");
+            //}
             if (RowsRaw.Length > 0)
             {  
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i <5; i++)
                 {
-                   
+                    //Console.WriteLine($" VMDATA Realtime from TABLE :  {RowsRaw[i]["time"]}={RowsRaw[i]["dpid"]}={RowsRaw[i]["value"]} ");
                     DateTime dataT = RealTime.AddMinutes(-5 + i);
                     try { RowsRaw = Table.Select("time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
                     catch { RowsRaw = new DataRow[] { }; }
                     if (RowsRaw.Length == 0)
                     {
+                        //Console.WriteLine($"VM Want time>");
                         vmdata = "";
-                        Console.WriteLine($"Realtime {RealTime.AddMinutes(-5 + i).ToString("yyyy-MM-dd HH:mm:00")}");
-                    }
-
-                    if (vmdata == "")
-                    {
                         try { RowsRaw = Table.Select("time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
                         catch { RowsRaw = new DataRow[] { }; }
                         if (RowsRaw.Length > 0)
                         {
                             vmdata = RowsRaw[RowsRaw.Length - 1]["value"].ToString();
                             if (vmdata == "") { vmdata = "0.0"; }
-                            Console.WriteLine($"{RealTime.AddMinutes(-5 + i).ToString("yyyy-MM-dd HH:mm:00")} >{vmdpid}={vmdata} ");
-                            //if (vmdata != "") { DpidValue.Add(RealTime.AddMinutes(-5 + i).ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + vmdata); }
+                            Console.WriteLine($"{dataT.ToString("yyyy-MM-dd HH:mm:00")} >{dpid}={vmdpid} > {vmdata} ");
+                            if (vmdata != "") { DpidValue.Add(dataT.ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + vmdata); }
 
                         }
 
@@ -129,8 +125,10 @@ namespace TextApp
             }
             else//如果沒有虛擬點位的資料從頭來算
             {
-                Console.WriteLine($"get Init data ");
+                //Console.WriteLine($"get Init data \n");
                 DpidValue = GetInitData(DateTime.Parse($"{RealTime.ToString("yyyy-MM-dd")} 00:00:00"), RealTime, dpid, vmdpid, Sourceid);
+                //DpidValue = GetInitData(DateTime.Parse($"2024-02-27 15:00:00"), DateTime.Parse($"2024-02-28 00:00:00"), dpid, vmdpid, Sourceid);
+
             }
             return DpidValue;
         }
@@ -139,7 +137,7 @@ namespace TextApp
             Dictionary<string, string> vmDpidValue = new Dictionary<string, string>();
            
             DataRow[] Raw = new DataRow[] { };
-            DataTable InitTable = ScanSQL(startTime.ToString("yyyy-MM-dd HH:mm:00"), endTime.ToString("yyyy-MM-dd HH:mm:00"), dpid+","+ vmdpid, SourceID);
+            DataTable InitTable = ScanSQL(startTime.ToString("yyyy-MM-dd HH:mm:00"), endTime.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:00"), dpid+","+ vmdpid, SourceID);
             //for (int i = 0; i < InitTable.Rows.Count; i++)
             //{
             //    Console.WriteLine(DateTime.Now + $" :  {InitTable.Rows[i]["time"]}={InitTable.Rows[i]["dpid"]}={InitTable.Rows[i]["value"]} ");
@@ -154,10 +152,10 @@ namespace TextApp
             
            // Console.WriteLine($"startTime ={startTime.ToString()}");
             string data = "";
-            for (int i = 1; i < (endTime - startTime).TotalMinutes-1; i++)
+            for (int i = 0; i < (endTime - startTime).TotalMinutes; i++)
             {
 
-                try { Raw = InitTable.Select("time ='" + startTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
+                try { Raw = InitTable.Select("time ='" + startTime.AddMinutes(i+1).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
                 catch { Raw = new DataRow[] { }; }
 
                 if (Raw.Length > 0)
@@ -169,7 +167,7 @@ namespace TextApp
                 try
                 {
                     // Console.WriteLine($"time={startTime.AddMinutes(i).ToString("yyyy -MM-dd HH:mm:00")} , {dpid}={data}");
-                    if (data != "") { vmDpidValue.Add(startTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + data); }
+                    if (data != "") { vmDpidValue.Add(startTime.AddMinutes(i+1).ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + data); }
                 }
                 catch (Exception ex) { Console.WriteLine($"GetInitData() Error ={ex.ToString()}"); }
 
@@ -188,25 +186,38 @@ namespace TextApp
 
             try { RowsRaw = Table.Select(" dpid = '" + vmdpid + "'"); }
             catch { RowsRaw = new DataRow[] { }; }
-
+            //for (int i = 0; i < RowsRaw.Length; i++)
+            //{
+            //    Console.WriteLine($" VMDATA Realtime from TABLE :  {RowsRaw[i]["time"]}={RowsRaw[i]["dpid"]}={RowsRaw[i]["value"]} ");
+            //}
             if (RowsRaw.Length > 0)
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    try { RowsRaw = Table.Select("time ='" + RealTime.AddMinutes(-5 + i).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
+                    DateTime dataT = RealTime.AddMinutes(-4 + i);
+                    
+                    try { RowsRaw = Table.Select("time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
                     catch { RowsRaw = new DataRow[] { }; }
-                    if (RowsRaw.Length > 0)
+                    if (RowsRaw.Length ==0)
                     {
-                        SumSun = RowsRaw[RowsRaw.Length - 1]["value"].ToString();
-                    }
-                    else
-                    {
-                        SumSun = "";
-                    }
+                                           
+                        try { RowsRaw = Table.Select("time ='" + dataT.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
+                        catch { RowsRaw = new DataRow[] { }; }
+                        if (RowsRaw.Length > 0)
+                        {
+                            //for (int N = 0; N < RowsRaw.Length; N++)
+                            //{
+                            //    Console.WriteLine($" VMDATA Realtime :  {RowsRaw[N]["time"]}={RowsRaw[N]["dpid"]}={RowsRaw[N]["value"]} ");
+                            //}
+                            if (dataT.Hour == 0) { SumSun = "0.0"; }
+                            else
+                            {
+                                SumSun = RowsRaw[RowsRaw.Length - 1]["value"].ToString();
+                            }
 
-                    if (SumSun == "")
-                    {
-                        try { RowsRaw = Table.Select("time ='" + RealTime.AddMinutes(-4 + i).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
+                        }
+
+                        try { RowsRaw = Table.Select("time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
                         catch { RowsRaw = new DataRow[] { }; }
                         if (RowsRaw.Length > 0)
                         {
@@ -214,9 +225,14 @@ namespace TextApp
                             if (SumSun == "") { SumSun = "0.0"; }
                             if (Sun == "") { Sun = "0.0"; }
                             SumSun = Math.Round(double.Parse(SumSun) + double.Parse(Sun) / Coef, 3).ToString();
-                            Console.WriteLine($"{RealTime.AddMinutes(-4 + i).ToString("yyyy-MM-dd HH:mm:00")} > {dpid}={Sun} + {vmdpid}={SumSun} ");
+                            Console.WriteLine($"{dataT.ToString("yyyy-MM-dd HH:mm:00")} > {dpid}={Sun} + {vmdpid}={SumSun} ");
                             if (SumSun != "")
-                            { DpidValue.Add(RealTime.AddMinutes(-4 + i).ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + SumSun); }
+                            { DpidValue.Add(dataT.ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + SumSun); }
+
+                        }
+                        else
+                        {
+                            Sun = "";
                         }
 
                     }
@@ -225,7 +241,9 @@ namespace TextApp
             }
             else//如果沒有虛擬點位的資料從頭來算
             {
-                  DpidValue=GetSunInitData(DateTime.Parse($"{RealTime.ToString("yyyy-MM-dd")} 05:00:00"), RealTime, dpid, vmdpid, Sourceid);
+                DpidValue=GetSunInitData(DateTime.Parse($"{RealTime.ToString("yyyy-MM-dd")} 00:00:00"), RealTime, dpid, vmdpid, Sourceid);
+               //DpidValue=GetSunInitData(DateTime.Parse("2024-02-28 09:00:00"), DateTime.Parse($"2024-02-28 10:00:00"), dpid, vmdpid, Sourceid);
+
             }
 
             return DpidValue;
@@ -236,45 +254,54 @@ namespace TextApp
             Dictionary<string, string> vmDpidValue = new Dictionary<string, string>();
             double Coef = 1 * (60 / 1);
             DataRow[] Raw = new DataRow[] { };
-            DataTable InitTable = ScanSQL(startTime.ToString("yyyy-MM-dd HH:mm:00"), endTime.ToString("yyyy-MM-dd HH:mm:00"), dpid+","+ vmdpid, SourceID);
+            DataTable InitTable = ScanSQL(startTime.ToString("yyyy-MM-dd HH:mm:00"), endTime.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:00"), dpid+","+ vmdpid, SourceID);
+            
             try { Raw = InitTable.Select("dpid = '" + vmdpid + "'"); }
             catch { Raw = new DataRow[] { }; }
             if (Raw.Length > 0)
             {
+                //for (int i = 0; i < Raw.Length; i++)
+                //{
+                //    Console.WriteLine( $" :  {Raw[i]["time"]}={Raw[i]["dpid"]}={Raw[i]["value"]} ");
+                //}
                 startTime = DateTime.Parse(Raw[Raw.Length - 1]["time"].ToString());
-                //Console.WriteLine($"Raw[Raw.Length - 1].ToString() ={Raw[Raw.Length - 1]["time"].ToString()}");
+               
+            //Console.WriteLine($"Raw[Raw.Length - 1].ToString() ={Raw[Raw.Length - 1]["time"].ToString()}");
             }
-
+            
             string data = "";
             string vmdata = "";
             
-            for (int i = 0; i < (endTime- startTime).TotalMinutes; i++)
+            for (int i = 0; i < (endTime- startTime).TotalMinutes-2; i++)
             {
-               
-                try { Raw = InitTable.Select("time ='" + startTime.AddMinutes(i-1).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
+                DateTime dataT = startTime.AddMinutes(i + 1);
+                //Console.WriteLine($"vmdpid  ={vmdpid }");
+                try { Raw = InitTable.Select("time ='" + dataT.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + vmdpid + "'"); }
                 catch {Raw = new DataRow[] { }; }
 
                 if (Raw.Length > 0)
                 {
-                    vmdata = Raw[RowsRaw.Length - 1]["value"].ToString();
+                     vmdata = Raw[Raw.Length - 1]["value"].ToString();
                 }
-               
-                try { Raw = InitTable.Select("time ='" + startTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
+                
+                //Console.WriteLine($"vmdata time  ={dataT.AddMinutes(-1).ToString("yyyy-MM-dd HH:mm")} && vmdata  ={vmdata}");
+
+
+                try { Raw = InitTable.Select("time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"); }
                 catch { Raw = new DataRow[] { }; }
-               
+
                 if (Raw.Length > 0)
                 {
                     data = Raw[Raw.Length - 1]["value"].ToString();
-                   //Console.WriteLine("time ='" + startTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'"+ data);
                 }
-                
+                else { data = "0.0"; }
+
+                //Console.WriteLine("data time ='" + dataT.ToString("yyyy-MM-dd HH:mm:00") + "' AND dpid = '" + dpid + "'" + data);
                 try
                 { 
-                    if (data == "") { data = "0.0"; }
-                    if (vmdata == "") { vmdata = "0.0"; }
                     vmdata = Math.Round(double.Parse(vmdata) + double.Parse(data) / Coef, 4).ToString();
-                    Console.WriteLine($"time={startTime.AddMinutes(i).ToString("yyyy - MM - dd HH: mm:00")} , {dpid}={data} + vmdata : {vmdpid}={vmdata}");
-                    if (vmdata != "") { vmDpidValue.Add(startTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + vmdata); }
+                    //Console.WriteLine($"time={dataT.ToString("yyyy - MM - dd HH: mm:00")} , {dpid}={data} + vmdata : {vmdpid}={vmdata}");
+                    if (vmdata != "") { vmDpidValue.Add(dataT.ToString("yyyy-MM-dd HH:mm:00"), vmdpid + "=" + vmdata); }
                     //Thread.Sleep(10);
                 }
                 catch(Exception ex){ Console.WriteLine($"GetInitData() Error ={ex.ToString()}"); }
@@ -286,7 +313,7 @@ namespace TextApp
         {
             string SQLString = "";
             string Value = "";
-            Console.WriteLine("values.Count / 60 : " + values.Count / 60);
+            //Console.WriteLine("values.Count / 60 : " + values.Count / 60);
             if (values.Count / 60.0 > 1)
             {
                 
@@ -312,7 +339,8 @@ namespace TextApp
                     {
                         SQLString = "INSERT INTO sys_data_raw VALUES " + SQLString;
                         InsertSQL(SQLString);
-                        Console.WriteLine(DateTime.Now + " : " + SQLString);
+                        //Console.WriteLine(DateTime.Now + " : " + SQLString);
+                        Write_File(Environment.CurrentDirectory +@"\"+ RealT.ToString("ddHH") + ".txt", SQLString, true);
                         Thread.Sleep(10);
                     }
                     
@@ -342,7 +370,8 @@ namespace TextApp
                     {
                         SQLString = "INSERT INTO sys_data_raw VALUES " + SQLString;
                         InsertSQL(SQLString);
-                        Console.WriteLine(DateTime.Now + " : " + SQLString);
+                        //Console.WriteLine(DateTime.Now + " : " + SQLString);
+                        Write_File(Environment.CurrentDirectory + @"\" + RealT.ToString("ddHH") + ".txt", SQLString, true);
                         Thread.Sleep(10);
                     }
                 }
@@ -370,7 +399,8 @@ namespace TextApp
                 {
                     SQLString = "INSERT INTO sys_data_raw VALUES " + SQLString;
                     InsertSQL(SQLString);
-                    Console.WriteLine(DateTime.Now + " : " + SQLString);
+                    //Console.WriteLine(DateTime.Now + " : " + SQLString);
+                    Write_File(Environment.CurrentDirectory + @"\" + RealT.ToString("ddHH") + ".txt", SQLString, true);
                     Thread.Sleep(10);
                 }
             }
@@ -469,7 +499,17 @@ namespace TextApp
             }
             return DBinsertFinish;
         }
-
+        private void Write_File(string path, string txt, bool re)
+        {
+            if (txt != "")
+            {
+                StreamWriter file_wri = new StreamWriter(path, re, Encoding.GetEncoding("UTF-8"));//re:(ture 不覆寫/false 覆寫)
+                file_wri.WriteLine(txt);
+                file_wri.Flush();
+                file_wri.Close();
+                Console.WriteLine(DateTime.Now.ToString("HH:mm") + "\r\n" + txt);
+            }
+        }
         public void GetConfig()
         {
             DpidConfig JConfig = new DpidConfig();
